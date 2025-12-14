@@ -25,7 +25,6 @@ from io import BytesIO
 
 CLASS_COLUMN = "INV CLASS"
 
- 
 
 CLASS_REC_FACTORS = {
 
@@ -1156,3 +1155,4 @@ if __name__ == "__main__":
 
 
     main()
+
