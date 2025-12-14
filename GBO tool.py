@@ -961,29 +961,18 @@ def main():
 
     DOWNLOAD_LINKS = {
 
-    # 🔽🔽🔽 REPLACE these placeholder strings with your actual URLs 🔽🔽🔽
+    #  URLs 
 
-    "Global Backorder": https://app.powerbi.com/groups/me/reports/89f5947c-abf5-4cd4-95b4-25a158409d8d/ReportSection54962abf70e80976410c?ctid=39b03722-b836-496a-85ec-850f0957ca6b&experience=power-bi&bookmarkGuid=d4ceed12-f5a9-4ea3-a6f6-aac101929d19
-
-
+    "Global Backorder": "url"
 ,
 
-    "MG4 Tool": https://app.powerbi.com/groups/me/apps/9c534bcc-8b34-4baf-a339-a346bf2d8ae8/reports/b428d9db-2c72-467d-b3e5-a66102dc42e7/ReportSection64b84a45b66b79870377?ctid=39b03722-b836-496a-85ec-850f0957ca6b&experience=power-bi
-
-
+    "MG4 Tool": "Url"
 ,
 
-    "SPM Search by Material": https://app.powerbi.com/groups/me/apps/ba63bdfd-30f3-4175-9b04-2cd1054f2e90/reports/ca29414c-71df-4a11-8c39-1d8ed34f3404/ReportSection7a99ad4fc84437ca260d?ctid=39b03722-b836-496a-85ec-850f0957ca6b&experience=power-bi&bookmarkGuid=Bookmarkda7c9c30b8d03e9d7d23
+    "SPM Search by Material": "url",
 
+    "Forecast Export (spm_search_by_mtl_fct_prts)": "url",
 
-,
-
-    "Forecast Export (spm_search_by_mtl_fct_prts)": https://app.powerbi.com/groups/me/apps/ba63bdfd-30f3-4175-9b04-2cd1054f2e90/reports/ca29414c-71df-4a11-8c39-1d8ed34f3404/ReportSection87aebeb3cda703148f17?ctid=39b03722-b836-496a-85ec-850f0957ca6b&experience=power-bi&bookmarkGuid=Bookmarkda7c9c30b8d03e9d7d23
-
-
-,
-
-    # 🔼🔼🔼 REPLACE these placeholder strings with your actual URLs 🔼🔼🔼
 
 }  
 
@@ -1123,7 +1112,7 @@ def main():
 
  
 
-            st.success("Done ✅")
+            st.success("Done")
 
  
 
@@ -1164,5 +1153,6 @@ def main():
  
 
 if __name__ == "__main__":
+
 
     main()
