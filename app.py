@@ -957,7 +957,7 @@ def run_pipeline(bo_df: pd.DataFrame,
 
 def main():
 
-    st.title("Global Back Order reccemendation")
+    st.title("Global Back Order recommendation tool")
 
    
 
