@@ -518,14 +518,15 @@ def build_and_apply_comments_for_part(db_R: pd.DataFrame,
     # Add recommendation note
 
     for depot_row in depot_lines_collector:
-
-        if depot_row["PART NBR"] == part:
-
-            mask = (db_R["PART NBR"] == part) & (db_R["SHIP UNIT"] == depot_row["SHIP UNIT"])
-
+        # Normalize both sides to string for safety
+        if str(depot_row["PART NBR"]).strip() == str(part).strip():
+            mask = (
+                db_R["PART NBR"].astype(str).str.strip() == str(part).strip()
+            ) & (
+                db_R["SHIP UNIT"].astype(str).str.strip()
+                == str(depot_row["SHIP UNIT"]).strip()
+            )
             db_R.loc[mask, "Recommendation"] = depot_row["Recommendation_Note"]
-
- 
 
     return db_R
 
