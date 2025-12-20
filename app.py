@@ -957,202 +957,122 @@ def run_pipeline(bo_df: pd.DataFrame,
 
 def main():
 
-    st.title("Global Back Order recommendation tool")
+    st.title("Global Backorder Recommendation Tool")
 
-   
+    st.write(
+        """
+        This app helps you quickly review **global backorders**, inventory, and forecast
+        to generate:
+        - `data_with_comments.xlsx` – your original BO file + auto-generated Comments & Recommendations  
+        - `bo_outputs.xlsx` – multi-sheet planner workbook (Depot view, Part summary, Issues, etc.)
+        """
+    )
 
+    # ==============================
+    # STEP 0 – Links to where to pull data
+    # ==============================
     DOWNLOAD_LINKS = {
+        # TODO: replace "https://..." with your real links
+        "Global Backorder": "https://your-link-here",
+        "MG4 Material Mapping": "https://your-link-here",
+        "SPM Search by Material Tool": "https://your-link-here",
+        "Forecast Export": "https://your-link-here",
+    }
 
-    #URLs 
-
-    "Global Backorder": "url"
-
-
-,
-
-    "MG4 Tool": "url"
-,
-
-    "SPM Search by Material": "url"
-,
-
-    "Forecast Export (spm_search_by_mtl_fct_prts)": "url"
-
-    # Replace above with URL ^^^^^^ 
-
-}  
-
- 
-
-# Sidebar links (Step 1)
-
+    # Sidebar: quick links + instructions
     st.sidebar.header("1. Download latest input files")
 
- 
-
-    # NOTE: these use the DOWNLOAD_LINKS dict defined at the top.
-
     st.sidebar.markdown(
-
-        "- [Global Backorder Report](%s)\n"
-
-        "- [MG4 Material Mapping](%s)\n"
-
-        "- [SPM Search by Material Tool](%s)\n"
-
-        "- [Forecast Export (spm_search_by_mtl_fct_prts)](%s)"
-
-        % (
-
-            DOWNLOAD_LINKS["Global Backorder"],
-
-            DOWNLOAD_LINKS["MG4 Tool"],
-
-            DOWNLOAD_LINKS["SPM Search by Material"],
-
-            DOWNLOAD_LINKS["Forecast Export (spm_search_by_mtl_fct_prts)"],
-
-        )
-
+        f"""
+        1. [Global Backorder Report]({DOWNLOAD_LINKS['Global Backorder']})  
+        2. [MG4 Material Mapping]({DOWNLOAD_LINKS['MG4 Material Mapping']})  
+        3. [SPM Search by Material Tool]({DOWNLOAD_LINKS['SPM Search by Material Tool']})  
+        4. [Forecast Export]({DOWNLOAD_LINKS['Forecast Export']})  
+        ---
+        After downloading the latest files, upload them below to run the tool.
+        """
     )
-
-    st.sidebar.markdown("---")
-
-    st.sidebar.caption("Open each link, export/download the Excel, then upload below 👇")
-
-   
-
-    #populate
 
     st.subheader("Step 1 – Download latest input files")
-
     st.markdown(
-
         f"""
-
-        - [Global Backorder Report]({DOWNLOAD_LINKS["Global Backorder"]}) 
-
-        - [MG4 Material Mapping]({DOWNLOAD_LINKS["MG4 Tool"]}) 
-
-        - [SPM Search by Material Tool]({DOWNLOAD_LINKS["SPM Search by Material"]}) 
-
-        - [Forecast Export (spm_search_by_mtl_fct_prts)]({DOWNLOAD_LINKS["Forecast Export (spm_search_by_mtl_fct_prts)"]}) 
-
+        Use the links in the **left sidebar** to pull:
+        - Global Backorder export  
+        - MG4 mapping (Factory Direct 'R' tagging)  
+        - SPM search by material (inventory)  
+        - Forecast export (SPM F_M_1–F_M_3)  
         """
-
     )
 
- 
-
- 
-
+    st.subheader("Step 2 – Upload files and run the tool")
     st.markdown(
-
         """
-
-        Upload your latest files and generate:
-
-        - **data_with_comments.xlsx** – original BO file + Comments/Recommendations 
-
-        - **bo_outputs.xlsx** – multi-sheet planner workbook 
-
+        Upload your latest files and click **Run BO Copilot** to generate:
+        - **data_with_comments.xlsx** – ready to send / review  
+        - **bo_outputs.xlsx** – planner workbook for deeper analysis  
         """
-
     )
 
- 
-
+    # ==============================
+    # File upload + run button
+    # ==============================
     with st.form("bo_form"):
-
-        bo_file = st.file_uploader("Backorder export (e.g. data.xlsx)", type=["xlsx"])
-
-        mg4_file = st.file_uploader("MG4 file (MATERIAL / PAG/ PDX MG 4)", type=["xlsx"])
-
-        spm_file = st.file_uploader("SPM search by material tool", type=["xlsx"])
-
-        fcst_file = st.file_uploader("Forecast export (spm_search_by_mtl_fct_prts)", type=["xlsx"])
-
- 
+        bo_file = st.file_uploader(
+            "Backorder export (e.g. global BO report)", type=["xlsx"]
+        )
+        mg4_file = st.file_uploader(
+            "MG4 file (MATERIAL / PAG/ PDX MG 4)", type=["xlsx"]
+        )
+        spm_file = st.file_uploader(
+            "SPM search by material tool (inventory export)", type=["xlsx"]
+        )
+        fcst_file = st.file_uploader(
+            "Forecast export (sheet 'Export' with F_M_1–F_M_3)", type=["xlsx"]
+        )
 
         submitted = st.form_submit_button("Run BO Copilot")
 
- 
-
     if submitted:
-
         if not all([bo_file, mg4_file, spm_file, fcst_file]):
-
-            st.error("Please upload **all four** required files.")
-
+            st.error("Please upload **all four** required files before running.")
             return
 
- 
-
         try:
-
-            with st.spinner("Processing…"):
-
+            with st.spinner("Processing global backorder data..."):
                 bo_df = pd.read_excel(bo_file)
-
                 mg4_df = pd.read_excel(mg4_file)
-
- 
-
-                # SPM – default sheet
-
-                spm_df = pd.read_excel(spm_file)
-
- 
-
-                # Forecast – sheet 'Export' like your original
-
+                spm_df = pd.read_excel(spm_file)  # default sheet
                 fcst_export_df = pd.read_excel(fcst_file, sheet_name="Export")
 
- 
-
                 data_with_comments_bytes, bo_outputs_bytes = run_pipeline(
-
                     bo_df, mg4_df, spm_df, fcst_export_df
-
                 )
 
- 
-
-            st.success("Done ✅")
-
- 
+            st.success("Done ✅ Files are ready to download.")
 
             st.download_button(
-
-                label="Download data_with_comments.xlsx",
-
+                label="⬇️ Download data_with_comments.xlsx",
                 data=data_with_comments_bytes,
-
                 file_name="data_with_comments.xlsx",
-
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-
+                mime=(
+                    "application/vnd.openxmlformats-"
+                    "officedocument.spreadsheetml.sheet"
+                ),
             )
-
- 
 
             st.download_button(
-
-                label="Download bo_outputs.xlsx",
-
+                label="⬇️ Download bo_outputs.xlsx",
                 data=bo_outputs_bytes,
-
                 file_name="bo_outputs.xlsx",
-
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-
+                mime=(
+                    "application/vnd.openxmlformats-"
+                    "officedocument.spreadsheetml.sheet"
+                ),
             )
-
- 
 
         except Exception as e:
-
             st.error(f"Error during processing: {e}")
+            st.exception(e)
 
  
 
