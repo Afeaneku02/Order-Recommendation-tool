@@ -7,6 +7,7 @@ Author: Winfred Afeaneku
 Started August 17, 2025.
 """
 
+
 import re
 from io import BytesIO
 from datetime import datetime
@@ -190,10 +191,6 @@ def ensure_columns(df: pd.DataFrame) -> pd.DataFrame:
         df.insert(insert_at, "Recommendation", "")
     return df
 
-def move_comments_to_last_week(df: pd.DataFrame) -> pd.DataFrame:
-    df["Last Week Comments"] = df["Comments"].fillna("")
-    df["Comments"] = ""
-    return df
 
 
 # ==============================
@@ -552,12 +549,10 @@ def run_pipeline(
     spm_df: pd.DataFrame,
     fcst_export_df: pd.DataFrame,
     target_flag: str = "R",
-    roll_comments_weekly: bool = False,
 ) -> Tuple[bytes, bytes]:
     db = bo_df.copy()
     db = ensure_columns(db)
-    if roll_comments_weekly:
-        db = move_comments_to_last_week(db)
+
 
     db = mg4Copilot(db, mg4_df)
     parts_df = partNumbers(db, target_flag=target_flag)
@@ -632,8 +627,8 @@ Upload your latest files and generate:
             format_func=lambda x: "Factory Direct (R)" if x == "R" else "Vendor Direct (V)",
             horizontal=True
         )
-    with col2:
-        roll_comments_weekly = st.checkbox("Move Comments → Last Week Comments", value=False)
+   # with col2:
+        #roll_comments_weekly = st.checkbox("Move Comments → Last Week Comments", value=False)
     with col3:
         st.caption("Uploads accept Excel (.xlsx/.xls) or CSV (.csv).")
 
@@ -683,7 +678,6 @@ Upload your latest files and generate:
             data_with_comments_bytes, bo_outputs_bytes = run_pipeline(
                 bo_df, mg4_df, spm_df, fcst_export_df,
                 target_flag=target_flag,
-                roll_comments_weekly=roll_comments_weekly,
             )
 
         st.success("Done ✅")
