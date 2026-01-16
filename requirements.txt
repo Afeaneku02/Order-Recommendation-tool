@@ -2,3 +2,9 @@ streamlit
 pandas
 openpyxl
 xlsxwriter
+Optional 
+Tuple
+List
+Dict
+datetime
+BytesIO
