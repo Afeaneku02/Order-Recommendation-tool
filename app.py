@@ -35,23 +35,19 @@ DOWNLOAD_LINKS = {
 # ==============================
 
 @st.cache_data(show_spinner=False)
-def read_table_cached(file, sheet_name=None, **kwargs) -> pd.DataFrame:
+def read_table_cached(file, sheet_name=0, **kwargs) -> pd.DataFrame:
     """
     Reads either Excel or CSV from a Streamlit UploadedFile.
-    - Excel: uses pd.read_excel (sheet_name optional)
-    - CSV: uses pd.read_csv
-    kwargs can include encoding, delimiter, etc for CSV.
+    - Excel: pd.read_excel (defaults to first sheet)
+    - CSV: pd.read_csv
     """
     name = (getattr(file, "name", "") or "").lower()
-    if name.endswith(".csv"):
-        # Good defaults; override via kwargs if needed
-        return pd.read_csv(file, **kwargs)
-    # Excel fallback
-    return pd.read_excel(file, sheet_name=sheet_name)
 
-@st.cache_data(show_spinner=False)
-def forecast_avg_cached(fcst_export_df: pd.DataFrame) -> pd.DataFrame:
-    return spm_search_by_mtl_fct_prts_Avg(fcst_export_df)
+    if name.endswith(".csv"):
+        return pd.read_csv(file, **kwargs)
+
+    # Excel: default FIRST sheet so we always return a DataFrame (not dict)
+    return pd.read_excel(file, sheet_name=sheet_name)
 
 
 # ==============================
