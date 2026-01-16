@@ -54,6 +54,10 @@ def read_table_cached(file, sheet_name=0, **kwargs) -> pd.DataFrame:
 # Column normalization / alias matching (items 1,2,7,8)
 # ==============================
 
+@st.cache_data(show_spinner=False)
+def forecast_avg_cached(fcst_export_df: pd.DataFrame) -> pd.DataFrame:
+    return spm_search_by_mtl_fct_prts_Avg(fcst_export_df)
+    
 def _norm_col(c: str) -> str:
     c = str(c).strip().upper()
     c = re.sub(r"\s+", " ", c)
