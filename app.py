@@ -31,7 +31,7 @@ DOWNLOAD_LINKS = {
 
 
 # ==============================
-# Streamlit cache helpers (item 9)
+# Streamlit cache helpers
 # ==============================
 
 @st.cache_data(show_spinner=False)
@@ -51,18 +51,20 @@ def read_table_cached(file, sheet_name=0, **kwargs) -> pd.DataFrame:
 
 
 # ==============================
-# Column normalization / alias matching (items 1,2,7,8)
+# Column normalization / alias matching
 # ==============================
 
 @st.cache_data(show_spinner=False)
 def forecast_avg_cached(fcst_export_df: pd.DataFrame) -> pd.DataFrame:
     return spm_search_by_mtl_fct_prts_Avg(fcst_export_df)
-    
+
+
 def _norm_col(c: str) -> str:
     c = str(c).strip().upper()
     c = re.sub(r"\s+", " ", c)
     c = re.sub(r"[^A-Z0-9]", "", c)
     return c
+
 
 def find_col(df: pd.DataFrame, candidates: List[str], required: bool = True) -> Optional[str]:
     if df is None or df.empty:
@@ -80,6 +82,7 @@ def find_col(df: pd.DataFrame, candidates: List[str], required: bool = True) -> 
         raise ValueError(f"Missing required column. Tried: {candidates}. Found: {list(df.columns)}")
     return None
 
+
 def rename_to_canonical(df: pd.DataFrame, canonical_map: Dict[str, List[str]]) -> pd.DataFrame:
     out = df.copy()
     rename_dict = {}
@@ -89,6 +92,7 @@ def rename_to_canonical(df: pd.DataFrame, canonical_map: Dict[str, List[str]]) -
     out.rename(columns=rename_dict, inplace=True)
     return out
 
+
 def normalize_keys(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
     out = df.copy()
     for c in cols:
@@ -96,12 +100,14 @@ def normalize_keys(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
             out[c] = out[c].astype(str).str.strip()
     return out
 
+
 def validate_and_prepare_inputs(
     bo_df: pd.DataFrame,
-    mg4_df: pd.DataFrame,
+    mg4_df: Optional[pd.DataFrame],
     spm_df: pd.DataFrame,
     fcst_export_df: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    require_mg4: bool = True,
+) -> Tuple[pd.DataFrame, Optional[pd.DataFrame], pd.DataFrame, pd.DataFrame]:
     # ---- BO canonical
     bo_df = rename_to_canonical(bo_df, {
         "PART NBR": ["PART NBR", "PART", "PARTNUMBER", "PART NUMBER"],
@@ -116,17 +122,23 @@ def validate_and_prepare_inputs(
 
     bo_df = normalize_keys(bo_df, ["PART NBR", "SHIP UNIT"])
 
-    # ---- MG4 canonical
-    mg4_df = rename_to_canonical(mg4_df, {
-        "MATERIAL": ["MATERIAL", "material", "MATL", "MATL NUM", "MATL NUMBER"],
-        "MG4_FLAG": [
-            "PAG/ PDX MG 4", "PAG/PDX MG 4", "PAG PDX MG 4",
-            "PAG/ PDX MG4", "PAG/PDX MG4",
-            "MATERIAL GROUP 4", "Material group 4", "MG4", "MG 4"
-        ],
-    })
-    mg4_df = normalize_keys(mg4_df, ["MATERIAL", "MG4_FLAG"])
-    mg4_df["MG4_FLAG"] = mg4_df["MG4_FLAG"].astype(str).str.strip().str.upper()
+    # ---- MG4 canonical (ONLY if required)
+    if require_mg4:
+        if mg4_df is None or mg4_df.empty:
+            raise ValueError("MG4 file is required for Factory Direct (R) or Vendor Direct (V).")
+
+        mg4_df = rename_to_canonical(mg4_df, {
+            "MATERIAL": ["MATERIAL", "material", "MATL", "MATL NUM", "MATL NUMBER"],
+            "MG4_FLAG": [
+                "PAG/ PDX MG 4", "PAG/PDX MG 4", "PAG PDX MG 4",
+                "PAG/ PDX MG4", "PAG/PDX MG4",
+                "MATERIAL GROUP 4", "Material group 4", "MG4", "MG 4"
+            ],
+        })
+        mg4_df = normalize_keys(mg4_df, ["MATERIAL", "MG4_FLAG"])
+        mg4_df["MG4_FLAG"] = mg4_df["MG4_FLAG"].astype(str).str.strip().str.upper()
+    else:
+        mg4_df = None  # explicitly not used
 
     # ---- SPM canonical
     spm_df = rename_to_canonical(spm_df, {
@@ -159,6 +171,7 @@ CLASS_COLUMN = "INV CLASS"
 CLASS_REC_FACTORS = {"A": 0.90, "B": 0.80, "C": 0.75, "D": 0.70, "E": 0.70}
 DEFAULT_REC_FACTOR = 0.70
 
+
 def get_rec_factor_for_part(df: pd.DataFrame, part: str) -> float:
     if CLASS_COLUMN not in df.columns:
         return DEFAULT_REC_FACTOR
@@ -181,6 +194,7 @@ def get_rec_factor_for_part(df: pd.DataFrame, part: str) -> float:
 def todays_date() -> str:
     return datetime.now().strftime("%Y-%m-%d")
 
+
 def ensure_columns(df: pd.DataFrame) -> pd.DataFrame:
     if "Comments" not in df.columns:
         df.insert(min(8, len(df.columns)), "Comments", "")
@@ -193,7 +207,6 @@ def ensure_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-
 # ==============================
 # MG4 tagging
 # ==============================
@@ -202,6 +215,7 @@ def mg4Copilot(db: pd.DataFrame, mg4_df: pd.DataFrame) -> pd.DataFrame:
     lookup = dict(zip(mg4_df["MATERIAL"], mg4_df["MG4_FLAG"]))
     db["MG4 Result"] = db["PART NBR"].map(lookup)
     return db
+
 
 def partNumbers(db: pd.DataFrame, target_flag: str = "R") -> pd.DataFrame:
     target_flag = str(target_flag).strip().upper()
@@ -233,6 +247,7 @@ def spm_inventory_data(part: str, dist_ctr: str, df_spm: pd.DataFrame):
         False,
     )
 
+
 def spm_search_by_mtl_fct_prts_Avg(fcst_df_raw: pd.DataFrame) -> pd.DataFrame:
     df = fcst_df_raw.copy()
     df.columns = df.columns.astype(str).str.strip().str.replace("|", "", regex=False)
@@ -256,6 +271,7 @@ def calc_total_bo_for_part_depot(global_bo_df: pd.DataFrame, part: str, dist_ctr
         global_bo_df["SHIP UNIT"].astype(str).str.strip() == str(dist_ctr).strip()
     )
     return pd.to_numeric(global_bo_df.loc[mask, "BO QTY"], errors="coerce").fillna(0).sum()
+
 
 def format_depot_entry(date_str, depot, bo, avail, inhouse, wip, intransit, onorder, note=None, note2=None):
     base = (
@@ -367,10 +383,17 @@ def backfill_missing_recommendations(
     today = todays_date()
     tf = str(target_flag).strip().upper()
 
-    mask_target = db["MG4 Result"].astype(str).str.upper().str.strip() == tf
     mask_missing = db["Recommendation"].fillna("").astype(str).str.strip() == ""
 
-    to_fix = db[mask_target & mask_missing][["PART NBR", "SHIP UNIT"]].drop_duplicates()
+    # If BOTH, backfill for ALL rows with missing recommendation.
+    if tf == "BOTH":
+        to_fix = db[mask_missing][["PART NBR", "SHIP UNIT"]].drop_duplicates()
+    else:
+        # Otherwise, backfill only the selected MG4 type (R or V)
+        if "MG4 Result" not in db.columns:
+            raise ValueError("MG4 Result missing. Ensure MG4 file was processed for R/V mode.")
+        mask_target = db["MG4 Result"].astype(str).str.upper().str.strip() == tf
+        to_fix = db[mask_target & mask_missing][["PART NBR", "SHIP UNIT"]].drop_duplicates()
 
     for _, r in to_fix.iterrows():
         part = str(r["PART NBR"]).strip()
@@ -396,7 +419,11 @@ def backfill_missing_recommendations(
         else:
             note = coverage_note(bo_total, avail, inhouse, wip, intransit)
 
-        db.loc[(db["PART NBR"] == part) & (db["SHIP UNIT"].astype(str).str.strip() == depot), "Recommendation"] = note
+        db.loc[
+            (db["PART NBR"] == part) & (db["SHIP UNIT"].astype(str).str.strip() == depot),
+            "Recommendation"
+        ] = note
+
         issues_collector.append({
             "PART NBR": part,
             "SHIP UNIT": depot,
@@ -442,6 +469,7 @@ def build_part_summary(depot_df: pd.DataFrame, full_db: pd.DataFrame) -> pd.Data
         "PART NBR", "BO", "AVAIL", "INHOUSE", "WIP", "INTRANSIT", "ON_ORDER",
         "Total_OnHand", "Forecast_Avg_F_M_1_to_3", "Rec_Pieces_Est", "Status"
     ]]
+
 
 def build_planner_view_all(db_data: pd.DataFrame, depot_lines_df: pd.DataFrame) -> pd.DataFrame:
     if depot_lines_df.empty:
@@ -495,6 +523,7 @@ def _col_letter(n: int) -> str:
         letters = string.ascii_uppercase[rem] + letters
     return letters
 
+
 def build_outputs_workbook(db: pd.DataFrame, depot_lines_collector: list, issues_collector: list) -> bytes:
     depot_df = pd.DataFrame(depot_lines_collector) if depot_lines_collector else pd.DataFrame(
         columns=["Date", "PART NBR", "SHIP UNIT", "BO", "AVAIL", "INHOUSE", "WIP",
@@ -546,7 +575,7 @@ def build_outputs_workbook(db: pd.DataFrame, depot_lines_collector: list, issues
 
 def run_pipeline(
     bo_df: pd.DataFrame,
-    mg4_df: pd.DataFrame,
+    mg4_df: Optional[pd.DataFrame],
     spm_df: pd.DataFrame,
     fcst_export_df: pd.DataFrame,
     target_flag: str = "R",
@@ -554,9 +583,16 @@ def run_pipeline(
     db = bo_df.copy()
     db = ensure_columns(db)
 
+    tf = str(target_flag).strip().upper()
 
-    db = mg4Copilot(db, mg4_df)
-    parts_df = partNumbers(db, target_flag=target_flag)
+    # If BOTH: do NOT use MG4 tagging/filtering
+    if tf == "BOTH":
+        parts_df = db[["PART NBR", "SHIP UNIT", "ACCT UNIT"]].drop_duplicates()
+    else:
+        if mg4_df is None or mg4_df.empty:
+            raise ValueError("MG4 file is required for Factory Direct (R) or Vendor Direct (V).")
+        db = mg4Copilot(db, mg4_df)
+        parts_df = partNumbers(db, target_flag=tf)
 
     fcst_avg = spm_search_by_mtl_fct_prts_Avg(fcst_export_df)
 
@@ -566,7 +602,7 @@ def run_pipeline(
     for part in sorted(parts_df["PART NBR"].unique().tolist()):
         db = build_and_apply_comments_for_part(db, fcst_avg, part, depot_lines_collector, issues_collector, spm_df)
 
-    db = backfill_missing_recommendations(db, fcst_avg, spm_df, issues_collector, target_flag=target_flag)
+    db = backfill_missing_recommendations(db, fcst_avg, spm_df, issues_collector, target_flag=tf)
 
     buf_data = BytesIO()
     db.to_excel(buf_data, index=False)
@@ -624,33 +660,52 @@ Upload your latest files and generate:
     with col1:
         target_flag = st.radio(
             "Process parts type",
-            options=["R", "V"],
-            format_func=lambda x: "Factory Direct (R)" if x == "R" else "Vendor Direct (V)",
+            options=["R", "V", "BOTH"],
+            format_func=lambda x: (
+                "Factory Direct (R)" if x == "R"
+                else "Vendor Direct (V)" if x == "V"
+                else "Both (R + V) — MG4 not required"
+            ),
             horizontal=True
         )
-   # with col2:
-        #roll_comments_weekly = st.checkbox("Move Comments → Last Week Comments", value=False)
+
     with col3:
         st.caption("Uploads accept Excel (.xlsx/.xls) or CSV (.csv).")
 
     with st.form("bo_form"):
         bo_file = st.file_uploader("Backorder export (Excel/CSV)", type=["xlsx", "xls", "csv"])
-        mg4_file = st.file_uploader("MG4 file (Excel/CSV)", type=["xlsx", "xls", "csv"])
+
+        # Only ask for MG4 if R or V
+        mg4_file = None
+        if str(target_flag).strip().upper() != "BOTH":
+            mg4_file = st.file_uploader("MG4 file (Excel/CSV)", type=["xlsx", "xls", "csv"])
+        else:
+            st.info("MG4 upload skipped because you selected BOTH.")
+
         spm_file = st.file_uploader("SPM export (Excel/CSV)", type=["xlsx", "xls", "csv"])
         fcst_file = st.file_uploader("Forecast export (Excel/CSV)", type=["xlsx", "xls", "csv"])
         submitted = st.form_submit_button("Run BO Copilot")
 
     if not submitted:
         return
-    if not all([bo_file, mg4_file, spm_file, fcst_file]):
-        st.error("Please upload **all four** required files.")
+
+    tf = str(target_flag).strip().upper()
+
+    required_ok = all([bo_file, spm_file, fcst_file]) and (tf == "BOTH" or mg4_file is not None)
+    if not required_ok:
+        if tf == "BOTH":
+            st.error("Please upload Backorder, SPM, and Forecast files.")
+        else:
+            st.error("Please upload **all four** required files (Backorder, MG4, SPM, Forecast).")
         return
 
     try:
         with st.spinner("Reading files…"):
             bo_df = read_table_cached(bo_file)
 
-            mg4_df = read_table_cached(mg4_file)
+            mg4_df = None
+            if tf != "BOTH":
+                mg4_df = read_table_cached(mg4_file)
 
             spm_df = read_table_cached(spm_file)
 
@@ -669,16 +724,17 @@ Upload your latest files and generate:
 
         with st.spinner("Validating & normalizing inputs…"):
             bo_df, mg4_df, spm_df, fcst_export_df = validate_and_prepare_inputs(
-                bo_df, mg4_df, spm_df, fcst_export_df
+                bo_df, mg4_df, spm_df, fcst_export_df,
+                require_mg4=(tf != "BOTH")
             )
 
-        # Optional caching warm-up (doesn't change pipeline behavior)
+        # Optional caching warm-up
         _ = forecast_avg_cached(fcst_export_df)
 
         with st.spinner("Processing recommendations…"):
             data_with_comments_bytes, bo_outputs_bytes = run_pipeline(
                 bo_df, mg4_df, spm_df, fcst_export_df,
-                target_flag=target_flag,
+                target_flag=tf,
             )
 
         st.success("Done ✅")
@@ -686,13 +742,13 @@ Upload your latest files and generate:
         st.download_button(
             label="Download data_with_comments.xlsx",
             data=data_with_comments_bytes,
-            file_name=f"data_with_comments_{todays_date()}_{target_flag}.xlsx",
+            file_name=f"data_with_comments_{todays_date()}_{tf}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         st.download_button(
             label="Download bo_outputs.xlsx",
             data=bo_outputs_bytes,
-            file_name=f"bo_outputs_{todays_date()}_{target_flag}.xlsx",
+            file_name=f"bo_outputs_{todays_date()}_{tf}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
@@ -702,3 +758,4 @@ Upload your latest files and generate:
 
 if __name__ == "__main__":
     main()
+
