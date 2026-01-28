@@ -65,6 +65,34 @@ def _norm_col(c: str) -> str:
     c = re.sub(r"[^A-Z0-9]", "", c)
     return c
 
+def safe_int(x) -> int:
+    """Convert x to int, treating None/NaN/blank as 0."""
+    if x is None:
+        return 0
+    try:
+        if pd.isna(x):
+            return 0
+    except Exception:
+        pass
+    try:
+        return int(float(x))
+    except Exception:
+        return 0
+
+
+def safe_float(x) -> float:
+    """Convert x to float, treating None/NaN/blank as 0.0."""
+    if x is None:
+        return 0.0
+    try:
+        if pd.isna(x):
+            return 0.0
+    except Exception:
+        pass
+    try:
+        return float(x)
+    except Exception:
+        return 0.0
 
 def find_col(df: pd.DataFrame, candidates: List[str], required: bool = True) -> Optional[str]:
     if df is None or df.empty:
@@ -231,19 +259,28 @@ def spm_inventory_data(part: str, dist_ctr: str, df_spm: pd.DataFrame):
     if str(dist_ctr).strip() == "3Q01":
         dist_ctr = "2003"
 
-    result = df_spm[(df_spm["PRT NUM"] == str(part).strip()) & (df_spm["DIST_CTR"] == str(dist_ctr).strip())]
+    result = df_spm[
+        (df_spm["PRT NUM"] == str(part).strip()) &
+        (df_spm["DIST_CTR"] == str(dist_ctr).strip())
+    ]
+
     if result.empty:
         return (0, 0, 0, 0, 0, True)
 
     row = result.iloc[0].copy()
+
+    # Coerce numeric + fill NaN
     for inventory in ["AVAIL", "INHOUSE", "WIP", "INTRANSIT", "ON_ORDER"]:
         row[inventory] = pd.to_numeric(row.get(inventory, 0), errors="coerce")
+        if pd.isna(row[inventory]):
+            row[inventory] = 0
+
     return (
-        int(row.get("AVAIL", 0) or 0),
-        int(row.get("INHOUSE", 0) or 0),
-        int(row.get("WIP", 0) or 0),
-        int(row.get("INTRANSIT", 0) or 0),
-        int(row.get("ON_ORDER", 0) or 0),
+        safe_int(row.get("AVAIL")),
+        safe_int(row.get("INHOUSE")),
+        safe_int(row.get("WIP")),
+        safe_int(row.get("INTRANSIT")),
+        safe_int(row.get("ON_ORDER")),
         False,
     )
 
@@ -316,7 +353,7 @@ def build_and_apply_comments_for_part(
     depots = sorted(part_rows["SHIP UNIT"].dropna().unique().astype(str).tolist())
 
     fcst_row = fcst_avg.loc[fcst_avg["PRT NUM"] == part, "Average_F_M_1_to_3"]
-    fcst_val = float(fcst_row.iloc[0]) if not fcst_row.empty else 0.0
+    fcst_val = safe_float(fcst_row.iloc[0]) if not fcst_row.empty else 0.0
 
     rec_factor = get_rec_factor_for_part(db_all, part)
 
@@ -406,8 +443,7 @@ def backfill_missing_recommendations(
         bo_total = calc_total_bo_for_part_depot(db, part, depot)
 
         fcst_row = fcst_avg.loc[fcst_avg["PRT NUM"] == part, "Average_F_M_1_to_3"]
-        fcst_val = float(fcst_row.iloc[0]) if not fcst_row.empty else 0.0
-
+        fcst_val = safe_float(fcst_row.iloc[0]) if not fcst_row.empty else 0.0
         rec_factor = get_rec_factor_for_part(db, part)
         rec_pcs = int(max(0, (bo_total + fcst_val)) * rec_factor)
 
